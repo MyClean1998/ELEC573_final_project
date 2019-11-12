@@ -65,11 +65,8 @@ def centrality_analysis(team):
 		clusterings = []
 		for t in teams:
 			clusterings.append(nx.transitivity(createGraph	(read_json(t), 10)))
-		fig = plt.figure()
-		ax = fig.add_axes([0,0,1,1])
-		ax.bar(teams, clusterings)
-		ax.set_xticks(np.arange(30), teams)
-		ax.set_xticklabels(teams, rotation = 45)
+		plt.barh(np.arange(30) * 2, clusterings)
+		plt.yticks(np.arange(30) * 2, teams, fontsize=5)
 
 		plt.show()
 		# centrality_analysis(t)
@@ -97,3 +94,17 @@ def centrality_analysis(team):
 # getTeams()
 # centrality_analysis("SAS")
 centrality_analysis('all')
+# import matplotlib.pyplot as plt; plt.rcdefaults()
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# objects = ('Python', 'C++', 'Java', 'Perl', 'Scala', 'Lisp')
+# y_pos = np.arange(len(objects))
+# performance = [10,8,6,4,2,1]
+#
+# plt.bar(y_pos, performance, align='center', alpha=0.5)
+# plt.xticks(y_pos, objects)
+# plt.ylabel('Usage')
+# plt.title('Programming language usage')
+#
+# plt.show()
