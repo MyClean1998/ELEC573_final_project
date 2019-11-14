@@ -35,7 +35,7 @@ def createGraph(dict, thres=20):
 def showGraph(g, team, sub=True, show=False, save=True):
 	layout = nx.drawing.layout.circular_layout(g)
 	labels = {p: p for p in g.nodes}
-	node_sizes = [100*d for n, d in g.degree]
+	node_sizes = [80*d for n, d in g.out_degree]
 	node_options = {
 		"pos": layout,
 		# 'node_color': 'black',
@@ -46,7 +46,7 @@ def showGraph(g, team, sub=True, show=False, save=True):
 	edge_width = []
 	for edge in edges:
 		weight = g[edge[0]][edge[1]]['weight']
-		weight = weight / 20. if sub else weight / 30.
+		weight = weight / 20. if sub else weight / 35.
 		weight = 1 if weight < 1 else weight
 		edge_width.append(weight)
 
@@ -60,7 +60,7 @@ def showGraph(g, team, sub=True, show=False, save=True):
 	plt.title("{} {}".format(team, g_type))
 	nx.draw_networkx_nodes(g, **node_options)
 	nx.draw_networkx_edges(g, **edge_options)
-	nx.draw_networkx_labels(g, pos=layout, labels=labels)
+	nx.draw_networkx_labels(g, pos=layout, labels=labels, font_color='brown')
 	# nx.draw(g, **options)
 	if save:
 		plt.savefig(os.path.join(g_type, "{}.png".format(team)))
@@ -140,14 +140,13 @@ if __name__ == '__main__':
 
 	# g = createGraph(read_json(assist_file, "GSW"), thres=20)
 	# showGraph(g, "GSW", show=True, save=False, sub=False)
-
-	# for team in teams:
-	# 	showGraph(createGraph(read_json(sub_file, team), thres=20), team, sub=True)
-	# 	showGraph(createGraph(read_json(assist_file, team), thres=20), team, sub=False)
+	for team in teams:
+		showGraph(createGraph(read_json(sub_file, team), thres=20), team, sub=True)
+		showGraph(createGraph(read_json(assist_file, team), thres=20), team, sub=False)
 
 	# ANALYSIS
-	centrality_analysis(sub_file, "SAS")
-	centrality_analysis(assist_file, "SAS")
+	# centrality_analysis(sub_file, "SAS")
+	# centrality_analysis(assist_file, "SAS")
 
 	# clustering_analysis(sub_file)
 	# clustering_analysis(assist_file)
