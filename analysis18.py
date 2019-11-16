@@ -4,12 +4,13 @@ from itertools import dropwhile, takewhile
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 teams = ['PHI', 'BOS', 'GSW', 'OKC', 'CHA', 'MIL', 'DET', 'BKN', 'MEM', 'IND', 'MIA', 'ORL', 'ATL', 'NYK', 'TOR', 'CLE',
-				 'HOU', 'NOP', 'SAS', 'MIN', 'SAC', 'UTA', 'LAC', 'DEN', 'PHX', 'DAL', 'CHI', 'WAS', 'POR', 'LAL']
+			'HOU', 'NOP', 'SAS', 'MIN', 'SAC', 'UTA', 'LAC', 'DEN', 'PHX', 'DAL', 'CHI', 'WAS', 'POR', 'LAL']
 
-def read_json(team):
-	with open("sub_18.json") as json_file:
+def read_json(filename, team):
+	with open(filename) as json_file:
 		data = json.load(json_file)
 		dict = {}
 		for p in data[team]:
@@ -31,83 +32,125 @@ def createGraph(dict, thres=20):
 	# # print(G.in_degree)
 	return G
 
-def showGraph(g, team):
+def showGraph(g, team, sub=True, show=False, save=True):
+	layout = nx.drawing.layout.circular_layout(g)
 	labels = {p: p for p in g.nodes}
-	options = {
+	node_sizes = [80*d for n, d in g.out_degree]
+	node_options = {
+		"pos": layout,
 		# 'node_color': 'black',
-		'node_size': 100,
-		# 'width': 3,
+		"node_size": node_sizes,
 		'labels': labels,
 	}
+	edges = g.edges
+	edge_width = []
+	for edge in edges:
+		weight = g[edge[0]][edge[1]]['weight']
+		weight = weight / 20. if sub else weight / 35.
+		weight = 1 if weight < 1 else weight
+		edge_width.append(weight)
+
+	edge_options = {
+		"pos": layout,
+		"edgelist": edges,
+		"width": edge_width
+	}
 	plt.figure()
-	nx.draw_kamada_kawai(g, **options)
+	g_type = "substitution" if sub else "assist"
+	plt.title("{} {}".format(team, g_type))
+	nx.draw_networkx_nodes(g, **node_options)
+	nx.draw_networkx_edges(g, **edge_options)
+	nx.draw_networkx_labels(g, pos=layout, labels=labels, font_color='brown')
 	# nx.draw(g, **options)
-	plt.savefig(team + '.png')
-	# plt.show()
+	if save:
+		plt.savefig(os.path.join(g_type, "{}.png".format(team)))
+	if show:
+		plt.show()
+	plt.close()
 
-# g = createGraph(read_json("PHI"))
-# showGraph(g, "PHI")
 
-
-# for team in teams:
-# 	showGraph(createGraph(read_json(team)), team)
-
-def getTeams():
-	with open("sub_18.json") as json_file:
+def getTeams(filename):
+	with open(filename) as json_file:
 		teams = []
 		data = json.load(json_file)
 		for k in data:
 			teams.append(k)
 		print(teams)
 
-def centrality_analysis(team):
-	if team == "all":
-		clusterings = []
-		degrees = []
-		for t in teams:
-			g = createGraph(read_json(t), 10)
-			clusterings.append(nx.transitivity(g))
-			degrees.append(np.average([d for e,d in nx.degree(g, weight='weight')]))
-		plt.barh(np.arange(30) * 2, degrees)
-		plt.yticks(np.arange(30) * 2, teams, fontsize=5)
 
-		plt.show()
-		# centrality_analysis(t)
-	else:
-		g = createGraph	(read_json(team), 10)
-		degrees = [d for e, d in nx.degree(g, weight='weight')]
-		betweenness = [b for b in nx.betweenness_centrality(g, weight="weight").values()]
-		clustering = [c for c in nx.clustering(g, weight="weight").values()]
-		# print("average degree: ", sum(degrees) / float(len(degrees)))
-		# print("average betweenness: ", sum(betweenness) / float(len(betweenness)))
-		# print("average clustering: ", sum(clustering) / float(len(clustering)))
+def clustering_analysis(filename):
+	clusterings = []
+	for t in teams:
+		clusterings.append((t, nx.transitivity(createGraph(read_json(filename, t), 10))))
+	sorted_cluster = sorted(clusterings, key=lambda x: x[1])
+	plt.barh(np.arange(30) * 2, list(map(lambda x: x[1], sorted_cluster)))
+	plt.yticks(np.arange(30) * 2, list(map(lambda x: x[0], sorted_cluster)), fontsize=5)
 
-		print(sorted(g.degree, key=lambda t: t[1], reverse=True))
-		print(sorted(nx.betweenness_centrality(g, weight="weight").items(), key=lambda t: t[1], reverse=True))
-		print(sorted(nx.clustering(g, weight="weight").items(), key=lambda t: t[1], reverse=True))
+	plt.show()
 
-		# plt.hist(degrees, bins=int(max(degrees) - min(degrees)))
-		# plt.show()
-		# plt.hist(betweenness, normed=True)
-		# plt.show()
-		# plt.hist(clustering, normed=True)
-		# plt.show()
-# def node_with_highest_centrality(g):
 
-# getTeams()
-# centrality_analysis("SAS")
-centrality_analysis('all')
-# import matplotlib.pyplot as plt; plt.rcdefaults()
-# import numpy as np
-# import matplotlib.pyplot as plt
-#
-# objects = ('Python', 'C++', 'Java', 'Perl', 'Scala', 'Lisp')
-# y_pos = np.arange(len(objects))
-# performance = [10,8,6,4,2,1]
-#
-# plt.bar(y_pos, performance, align='center', alpha=0.5)
-# plt.xticks(y_pos, objects)
-# plt.ylabel('Usage')
-# plt.title('Programming language usage')
-#
-# plt.show()
+def centrality_analysis(filename, team, print_info=True):
+	g = createGraph(read_json(filename, team), 10)
+	degrees = [d for e, d in g.degree]
+	betweenness = [b for b in nx.betweenness_centrality(g, weight="weight").values()]
+	clustering = [c for c in nx.clustering(g, weight="weight").values()]
+	# print("average degree: ", sum(degrees) / float(len(degrees)))
+	# print("average betweenness: ", sum(betweenness) / float(len(betweenness)))
+	# print("average clustering: ", sum(clustering) / float(len(clustering)))
+
+	degree_sort = sorted(g.degree, key=lambda t: t[1], reverse=True)
+	between_sort = sorted(nx.betweenness_centrality(g, weight="weight").items(), key=lambda t: t[1], reverse=True)
+	close_sort = sorted(nx.closeness_centrality(g).items(), key=lambda t: t[1], reverse=True)
+	eigen_sort = sorted(nx.eigenvector_centrality(g, weight='weight').items(), key=lambda t: t[1], reverse=True)
+
+	degree_ranking = list(map(lambda x: x[0], degree_sort))
+	between_ranking = list(map(lambda x: x[0], between_sort))
+	close_ranking = list(map(lambda x: x[0], close_sort))
+	eigen_ranking = list(map(lambda x: x[0], eigen_sort))
+
+	if print_info:
+		print("Degree: ", degree_ranking)
+		print("Betweenness: ", between_ranking)
+		print("Closeness: ", close_ranking)
+		print("Eigenvector: ", eigen_ranking)
+	return degree_ranking, between_ranking, close_ranking, eigen_ranking
+
+
+def compare_centrality_across_team(filename):
+	degree1 = []
+	between1 = []
+	close1 = []
+	eigen1 = []
+	for team in teams:
+		degree_ranking, between_ranking, close_ranking, eigen_ranking = centrality_analysis(filename, team, print_info=False)
+		degree1.append(degree_ranking[0])
+		between1.append(between_ranking[0])
+		close1.append(close_ranking[0])
+		eigen1.append(eigen_ranking[0])
+
+	print("Degree: ", degree1)
+	print("Betweenness: ", between1)
+	print("Closeness: ", close1)
+	print("Eigenvector: ", eigen1)
+
+
+if __name__ == '__main__':
+	sub_file = "sub_18.json"
+	assist_file = "assist_18.json"
+
+	# g = createGraph(read_json(assist_file, "GSW"), thres=20)
+	# showGraph(g, "GSW", show=True, save=False, sub=False)
+	for team in teams:
+		showGraph(createGraph(read_json(sub_file, team), thres=20), team, sub=True)
+		showGraph(createGraph(read_json(assist_file, team), thres=20), team, sub=False)
+
+	# ANALYSIS
+	# centrality_analysis(sub_file, "SAS")
+	# centrality_analysis(assist_file, "SAS")
+
+	# clustering_analysis(sub_file)
+	# clustering_analysis(assist_file)
+
+	# compare_centrality_across_team(sub_file)
+	# compare_centrality_across_team(assist_file)
+
