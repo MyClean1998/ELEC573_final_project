@@ -63,16 +63,19 @@ def getTeams():
 def centrality_analysis(team):
 	if team == "all":
 		clusterings = []
+		degrees = []
 		for t in teams:
-			clusterings.append(nx.transitivity(createGraph	(read_json(t), 10)))
-		plt.barh(np.arange(30) * 2, clusterings)
+			g = createGraph(read_json(t), 10)
+			clusterings.append(nx.transitivity(g))
+			degrees.append(np.average([d for e,d in nx.degree(g, weight='weight')]))
+		plt.barh(np.arange(30) * 2, degrees)
 		plt.yticks(np.arange(30) * 2, teams, fontsize=5)
 
 		plt.show()
 		# centrality_analysis(t)
 	else:
 		g = createGraph	(read_json(team), 10)
-		degrees = [d for e, d in g.degree]
+		degrees = [d for e, d in nx.degree(g, weight='weight')]
 		betweenness = [b for b in nx.betweenness_centrality(g, weight="weight").values()]
 		clustering = [c for c in nx.clustering(g, weight="weight").values()]
 		# print("average degree: ", sum(degrees) / float(len(degrees)))
